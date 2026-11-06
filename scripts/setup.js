@@ -154,31 +154,39 @@ async function installViaMicromamba() {
   // 1. 下载 micromamba
   const mmExe = path.join(workDir, IS_WIN ? 'micromamba.exe' : 'micromamba');
   if (!fs.existsSync(mmExe)) {
+    // micromamba 的各分发点统一提供 .tar.bz2 归档（含 Library/bin/micromamba）
     const urls = IS_WIN
       ? [
         'https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/win-64/micromamba-2.10.0-0.tar.bz2',
         'https://micro.mamba.pm/api/micromamba/win-64/latest',
+        'https://mirrors.cloud.tencent.com/anaconda/cloud/conda-forge/win-64/micromamba-2.10.0-0.tar.bz2',
       ]
       : [
         'https://micro.mamba.pm/api/micromamba/linux-64/latest',
         'https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/micromamba-2.10.0-0.tar.bz2',
       ];
-    let okDl = false;
+
     for (const u of urls) {
       info(`下载 micromamba: ${u}`);
-      const code = await downloadFile(u, path.join(workDir, 'mm.bin'));
-      if (code !== 0) continue;
-      if (u.endsWith('.tar.bz2')) {
-        const extracted = extractTarBz2(path.join(workDir, 'mm.bin'), workDir);
-        if (!extracted) continue;
-        const found = findFile(workDir, IS_WIN ? 'micromamba.exe' : 'micromamba');
-        if (found && found !== mmExe) fs.copyFileSync(found, mmExe);
-      } else {
-        fs.copyFileSync(path.join(workDir, 'mm.bin'), mmExe);
+      const tmpFile = path.join(workDir, 'mm-archive.bin');
+      const code = await downloadFile(u, tmpFile);
+      if (code !== 0) { warn('下载失败，尝试下一个源'); continue; }
+
+      // 校验是 bzip2 归档（BZh9 魔数）
+      const head = readHead(tmpFile, 4);
+      if (!head.startsWith('425A68')) {
+        warn('下载内容不是 tar.bz2 归档，尝试下一个源');
+        continue;
       }
-      if (fs.existsSync(mmExe)) { okDl = true; break; }
+
+      if (!extractTarBz2(tmpFile, workDir)) { warn('解压失败，尝试下一个源'); continue; }
+      const found = findFile(workDir, IS_WIN ? 'micromamba.exe' : 'micromamba');
+      if (!found) { warn('归档内未找到 micromamba，尝试下一个源'); continue; }
+      fs.copyFileSync(found, mmExe);
+      break;
     }
-    if (!okDl) {
+
+    if (!fs.existsSync(mmExe)) {
       err('micromamba 下载失败');
       return false;
     }
@@ -254,6 +262,19 @@ function findFile(dir, name) {
   return null;
 }
 
+/** 读取文件头部并以十六进制字符串返回 */
+function readHead(file, bytes) {
+  try {
+    const fd = fs.openSync(file, 'r');
+    const buf = Buffer.alloc(bytes);
+    fs.readSync(fd, buf, 0, bytes, 0);
+    fs.closeSync(fd);
+    return buf.toString('hex').toUpperCase();
+  } catch {
+    return '';
+  }
+}
+
 function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
   for (const e of fs.readdirSync(src, { withFileTypes: true })) {
@@ -264,10 +285,39 @@ function copyDir(src, dest) {
   }
 }
 
+/**
+ * 解压 .tar.bz2 —— 用 Node 内置 zlib 自行解析 tar，
+ * 不依赖外部 tar 命令（Windows 上的 GNU tar / bsdtar 对含盘符的路径
+ * 处理不一致，会报 "Cannot connect to C: resolve failed"）。
+ */
+/**
+ * 解压 .tar.bz2。
+ *
+ * Node 的 zlib 不支持 bzip2，而 Windows 上的 GNU tar / bsdtar 对含盘符的
+ * 路径处理不一致（报 "Cannot connect to C: resolve failed"）。
+ * Python 已是本工具的必需依赖，其标准库自带 bzip2 + tarfile，
+ * 因此统一交给 Python 解压，最稳。
+ */
 function extractTarBz2(archive, destDir) {
-  // 借助系统 tar（Windows 10+ 自带 bsdtar）
-  const r = spawnSync('tar', ['-xjf', archive, '-C', destDir], { encoding: 'utf8' });
-  return r.status === 0;
+  const python = findPython();
+  if (python) {
+    const script = `
+import sys, tarfile
+with tarfile.open(sys.argv[1], 'r:bz2') as tf:
+    tf.extractall(sys.argv[2])
+`;
+    const r = spawnSync(python, ['-c', script, archive, destDir], { encoding: 'utf8' });
+    if (r.status === 0) return true;
+    warn(`Python 解压失败: ${(r.stderr || '').trim().split('\n').pop()}`);
+  }
+
+  // 退路：系统 tar（用相对路径规避盘符冒号问题）
+  const rel = path.relative(process.cwd(), archive);
+  const r2 = spawnSync('tar', ['-xjf', rel, '-C', destDir], {
+    encoding: 'utf8',
+    cwd: process.cwd(),
+  });
+  return r2.status === 0;
 }
 
 /* ------------------------------------------------------------------ */
