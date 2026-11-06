@@ -196,6 +196,7 @@ async function installViaMicromamba() {
   // 2. 创建环境
   const envPrefix = path.join(ROOT, '.ffmpeg-env');
   const mirrors = FORCE_CN ? CONDA_MIRRORS : [...CONDA_MIRRORS, 'https://conda.anaconda.org/conda-forge'];
+  let installed = false;
   for (const m of mirrors) {
     info(`conda 源 ${m}`);
     const r = run(mmExe, [
@@ -208,13 +209,43 @@ async function installViaMicromamba() {
       const srcDir = path.join(envPrefix, IS_WIN ? 'Library\\bin' : 'bin');
       if (fs.existsSync(srcDir)) {
         copyDir(srcDir, BIN_DIR);
-        ok(`FFmpeg 已安装到 bin/`);
-        return true;
+        installed = true;
+        break;
       }
     }
   }
-  err('conda 安装 ffmpeg 失败');
-  return false;
+  if (!installed) {
+    err('conda 安装 ffmpeg 失败');
+    return false;
+  }
+  ok('FFmpeg 已安装到 bin/');
+
+  // 3. 清理临时目录（conda 环境与包缓存合计常超 1GB，装完即回收）
+  info('清理安装临时文件…');
+  removeTree(envPrefix);
+  removeTree(path.join(workDir, 'mamba-root'));
+  removeTree(workDir);
+  return true;
+}
+
+/** 递归删除目录（分批删文件，规避系统批量删除阈值） */
+function removeTree(dir) {
+  if (!fs.existsSync(dir)) return;
+  const walk = (d) => {
+    let ents;
+    try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    const files = ents.filter((e) => !e.isDirectory());
+    for (let i = 0; i < files.length; i += 8) {
+      for (const f of files.slice(i, i + 8)) {
+        try { fs.unlinkSync(path.join(d, f.name)); } catch { /* ignore */ }
+      }
+    }
+    for (const e of ents) {
+      if (e.isDirectory()) walk(path.join(d, e.name));
+    }
+    try { fs.rmdirSync(d); } catch { /* ignore */ }
+  };
+  walk(dir);
 }
 
 /* ------------------------------------------------------------------ */
