@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在线视频下载工具</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="header">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      </div>
+      <div>
+        <h1>在线视频下载工具</h1>
+        <p class="subtitle">本地运行 · 支持 B站 / YouTube / 抖音 / m3u8 等主流来源</p>
+      </div>
+    </div>
+    <div class="env-pill" id="envPill">
+      <span class="dot"></span>
+      <span id="envText">检测环境中…</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- 步骤 1：输入链接 -->
+    <section class="card">
+      <div class="card-head">
+        <span class="step">1</span>
+        <h2>粘贴视频链接</h2>
+      </div>
+
+      <div class="url-row">
+        <div class="input-wrap">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+          <input id="urlInput" type="text" spellcheck="false" autocomplete="off"
+                 placeholder="https://www.bilibili.com/video/BV...  或 m3u8 直链">
+          <button id="clearUrl" class="clear-btn" title="清空" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <button id="parseBtn" class="btn btn-primary">
+          <span class="btn-text">解析</span>
+          <span class="spinner" hidden></span>
+        </button>
+      </div>
+
+      <details class="advanced" id="advanced">
+        <summary>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+          高级选项（Referer / UA / Cookie）
+        </summary>
+        <div class="advanced-body">
+          <label class="field">
+            <span>Referer</span>
+            <input id="refererInput" type="text" spellcheck="false" placeholder="可选，部分站点校验来源">
+          </label>
+          <label class="field">
+            <span>User-Agent</span>
+            <input id="uaInput" type="text" spellcheck="false" placeholder="留空使用内置浏览器 UA">
+          </label>
+          <div class="field">
+            <span>Cookie</span>
+            <div class="cookie-row">
+              <label class="switch">
+                <input id="useCookies" type="checkbox">
+                <span class="track"><span class="thumb"></span></span>
+                <span class="switch-label">启用已保存的 cookies.txt</span>
+              </label>
+              <button class="btn btn-ghost btn-sm" id="cookieManageBtn">管理 Cookie</button>
+            </div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- 步骤 2：解析结果 -->
+    <section class="card" id="infoCard" hidden>
+      <div class="card-head">
+        <span class="step">2</span>
+        <h2>选择输出格式</h2>
+      </div>
+
+      <div class="meta" id="metaBox">
+        <div class="thumb-wrap" id="thumbWrap" hidden>
+          <img id="thumb" alt="" referrerpolicy="no-referrer">
+        </div>
+        <div class="meta-info">
+          <h3 id="videoTitle">—</h3>
+          <div class="meta-tags" id="metaTags"></div>
+        </div>
+      </div>
+
+      <div class="preset-group">
+        <div class="preset" data-preset="mp4">
+          <div class="preset-radio"></div>
+          <div class="preset-body">
+            <div class="preset-title">MP4（合并音视频）</div>
+            <div class="preset-desc">最佳画质，音视频合并为单个文件，兼容性最好</div>
+          </div>
+          <span class="preset-tag">推荐</span>
+        </div>
+        <div class="preset" data-preset="video">
+          <div class="preset-radio"></div>
+          <div class="preset-body">
+            <div class="preset-title">仅视频（不合并）</div>
+            <div class="preset-desc">保留原始视频轨，适合只需画面或自行配音</div>
+          </div>
+        </div>
+        <div class="preset" data-preset="audio">
+          <div class="preset-radio"></div>
+          <div class="preset-body">
+            <div class="preset-title">仅音频（MP3）</div>
+            <div class="preset-desc">提取为 MP3，适合播客、音乐、访谈内容</div>
+          </div>
+        </div>
+        <div class="preset" data-preset="raw">
+          <div class="preset-radio"></div>
+          <div class="preset-body">
+            <div class="preset-title">原始文件（不处理）</div>
+            <div class="preset-desc">直接保存源文件，不转码不合并</div>
+          </div>
+        </div>
+      </div>
+
+      <details class="advanced formats-adv" id="formatsAdv">
+        <summary>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+          高级：手动指定格式（可选）
+        </summary>
+        <div class="format-table-wrap">
+          <table class="format-table">
+            <thead>
+              <tr><th>ID</th><th>格式</th><th>分辨率</th><th>大小</th><th>编码</th><th></th></tr>
+            </thead>
+            <tbody id="formatTableBody"></tbody>
+          </table>
+        </div>
+      </details>
+
+      <button id="downloadBtn" class="btn btn-primary btn-block">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        开始下载
+      </button>
+    </section>
+
+    <!-- 步骤 3：任务 -->
+    <section class="card" id="taskCard" hidden>
+      <div class="card-head">
+        <span class="step">3</span>
+        <h2>下载任务</h2>
+        <button class="btn btn-ghost btn-sm" id="clearTasksBtn" style="margin-left:auto">清空已完成</button>
+      </div>
+      <div id="taskList" class="task-list"></div>
+    </section>
+
+    <!-- 已下载文件 -->
+    <section class="card" id="filesCard" hidden>
+      <div class="card-head">
+        <h2>已下载文件</h2>
+        <button class="btn btn-ghost btn-sm" id="refreshFilesBtn">刷新</button>
+        <button class="btn btn-ghost btn-sm" id="openFolderBtn">打开目录</button>
+      </div>
+      <div id="fileList" class="file-list"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span id="footerDir">—</span>
+  </footer>
+</div>
+
+<!-- Cookie 管理弹窗 -->
+<div class="modal" id="cookieModal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>管理 Cookie</h3>
+      <button class="icon-btn" data-close>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="hint">粘贴 <b>Netscape 格式</b> 的 cookies.txt 内容。浏览器扩展「Get cookies.txt LOCALLY」可直接导出。</p>
+      <textarea id="cookieText" placeholder="# Netscape HTTP Cookie File&#10;.bilibili.com&#9;TRUE&#9;/&#9;TRUE&#9;0&#9;SESSDATA&#9;xxx"></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="deleteCookieBtn">删除已保存</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost" data-close>取消</button>
+        <button class="btn btn-primary" id="saveCookieBtn">保存</button>
+      </div>
+      <p class="hint danger" id="cookieMsg" hidden></p>
+    </div>
+  </div>
+</div>
+
+<!-- 通用提示 -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

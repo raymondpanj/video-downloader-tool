@@ -1,0 +1,24 @@
+# 依赖
+node_modules/
+
+# FFmpeg / FFprobe 二进制（由 scripts/setup.js 自动下载，体积约 240MB）
+bin/
+.ffmpeg-env/
+.setup-tmp/
+
+# 运行时数据
+downloads/
+tmp/
+cookies/
+logs/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+
+# 本地环境覆盖
+.env
+.env.local

@@ -1,0 +1,32 @@
+{
+  "name": "video-downloader-tool",
+  "version": "1.0.0",
+  "private": false,
+  "description": "本地网页版在线视频下载工具，支持 B站/YouTube/抖音/m3u8 等来源，基于 yt-dlp + FFmpeg",
+  "keywords": [
+    "video-downloader",
+    "yt-dlp",
+    "ffmpeg",
+    "m3u8",
+    "bilibili",
+    "youtube"
+  ],
+  "license": "MIT",
+  "author": "raymondpanj",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/raymondpanj/video-downloader-tool.git"
+  },
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "setup": "node scripts/setup.js",
+    "check": "node scripts/setup.js --check"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

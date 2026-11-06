@@ -1,0 +1,15 @@
+# 统一换行符，避免跨平台协作时的无谓 diff
+* text=auto eol=lf
+
+# Windows 批处理与 PowerShell 脚本保留 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制文件不做换行符转换
+*.exe binary
+*.dll binary
+*.zip binary
+*.png binary
+*.jpg binary
+*.mp4 binary
